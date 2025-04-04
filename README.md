@@ -2,6 +2,12 @@
 
 Um visualizador interativo do algoritmo A* que compara duas heurísticas diferentes: Manhattan e Euclidiana.
 
+<div style="display: flex; justify-content: space-between;">
+  <img src="https://github.com/user-attachments/assets/3b2f796a-26b6-42d7-bea7-dbdc1ad42843" width="49%">
+  <img src="https://github.com/user-attachments/assets/01cd7680-720e-40c7-9647-c7da95df73a1" width="49%">
+</div>
+
+
 ## Funcionalidades
 
 - Visualização passo a passo do algoritmo A*
