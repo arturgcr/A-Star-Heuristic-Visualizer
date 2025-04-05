@@ -1,27 +1,19 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-Visualizador Premium do Algoritmo A* - Versão Final Corrigida
-Desenvolvido por [Seu Nome]
-"""
-
 import pygame
 import math
 import heapq
 import time
 from pygame import gfxdraw
 
-# Configurações iniciais
+# Initial settings / Configurações iniciais
 pygame.init()
 
-# Tamanhos e proporções
+# Dimensions and proportions / Tamanhos e proporções
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
 GRID_AREA_WIDTH = 600
 CONFIG_AREA_WIDTH = SCREEN_WIDTH - GRID_AREA_WIDTH
 
-# Cores
+# Colors / Cores
 COLORS = {
     'background': (248, 248, 252),
     'sidebar': (232, 232, 240),
@@ -40,74 +32,76 @@ COLORS = {
     'slider': (200, 200, 210)
 }
 
-# Configuração da janela
+# Window configuration / Configuração da janela
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Visualizador A* Premium")
+pygame.display.set_caption("Premium A* Visualizer")
 
-# Variáveis globais
-current_heuristic = 'euclidean'
-animation_speed = 0.05
-show_values = True
-show_visited = True
-dragging_start = False
-dragging_end = False
-is_running = False
-final_path = []
-g_values = {}
-path_length = 0
-visited_count = 0
+# Global variables / Variáveis globais
+current_heuristic = 'euclidean'  # Current heuristic type / Tipo de heurística atual
+animation_speed = 0.05  # Animation speed / Velocidade da animação
+show_values = True  # Whether to show cell values / Se deve mostrar valores das células
+show_visited = True  # Whether to show visited cells / Se deve mostrar células visitadas
+dragging_start = False  # If start node is being dragged / Se o nó inicial está sendo arrastado
+dragging_end = False  # If end node is being dragged / Se o nó final está sendo arrastado
+is_running = False  # If algorithm is running / Se o algoritmo está executando
+final_path = []  # Stores the final path / Armazena o caminho final
+g_values = {}  # Stores g values for cells / Armazena valores g das células
+path_length = 0  # Length of final path / Comprimento do caminho final
+visited_count = 0  # Number of visited cells / Número de células visitadas
 
-# Inicialização da grade
+# Grid initialization / Inicialização da grade
 GRID_CONFIG = {
-    'rows': 20,
-    'cols': 20,
-    'cell_size': min(GRID_AREA_WIDTH // 20, SCREEN_HEIGHT // 20),
-    'offset_x': 0,
-    'offset_y': 0
+    'rows': 20,  # Number of rows / Número de linhas
+    'cols': 20,  # Number of columns / Número de colunas
+    'cell_size': min(GRID_AREA_WIDTH // 20, SCREEN_HEIGHT // 20),  # Cell size / Tamanho da célula
+    'offset_x': 0,  # Horizontal offset / Deslocamento horizontal
+    'offset_y': 0  # Vertical offset / Deslocamento vertical
 }
 
-# Inicializa a grid
+# Initialize grid / Inicializa a grid
 grid = [[0 for _ in range(GRID_CONFIG['cols'])] for _ in range(GRID_CONFIG['rows'])]
-start_pos = (GRID_CONFIG['rows'] // 5, GRID_CONFIG['cols'] // 5)
+start_pos = (GRID_CONFIG['rows'] // 5, GRID_CONFIG['cols'] // 5)  # Start position / Posição inicial
 end_pos = (GRID_CONFIG['rows'] - GRID_CONFIG['rows'] // 5 - 1, 
-           GRID_CONFIG['cols'] - GRID_CONFIG['cols'] // 5 - 1)
+           GRID_CONFIG['cols'] - GRID_CONFIG['cols'] // 5 - 1)  # End position / Posição final
 
-# Fontes
+# Fonts / Fontes
 font_small = pygame.font.SysFont('Segoe UI', 14)
 font_medium = pygame.font.SysFont('Segoe UI', 16, bold=True)
 font_large = pygame.font.SysFont('Segoe UI', 20, bold=True)
 font_title = pygame.font.SysFont('Segoe UI', 24, bold=True)
 
-# Informações das heurísticas
+# Heuristic information / Informações das heurísticas
 HEURISTIC_DATA = {
     'manhattan': {
         'name': "Manhattan",
-        'desc': "Distância de quarteirão: soma das diferenças absolutas nas coordenadas. Ideal para movimentos ortogonais.",
+        'desc': "City block distance: sum of absolute coordinate differences. Ideal for orthogonal movements.",
         'formula': "f(n) = g(n) + |x₁ - x₂| + |y₁ - y₂|",
-        'best_for': "Movimento em 4 direções (cima, baixo, esquerda, direita)",
-        'complexity': "Mais rápida, mas menos precisa"
+        'best_for': "4-direction movement (up, down, left, right)",
+        'complexity': "Faster but less precise"
     },
     'euclidean': {
-        'name': "Euclidiana",
-        'desc': "Distância em linha reta: teorema de Pitágoras. Ideal para movimentos livres em qualquer direção.",
+        'name': "Euclidean",
+        'desc': "Straight-line distance: Pythagorean theorem. Ideal for free movement in any direction.",
         'formula': "f(n) = g(n) + √((x₁ - x₂)² + (y₁ - y₂)²)",
-        'best_for': "Movimento em qualquer direção",
-        'complexity': "Mais precisa, mas um pouco mais lenta"
+        'best_for': "Movement in any direction",
+        'complexity': "More precise but slightly slower"
     }
 }
 
 class Button:
+    """Button class for UI elements / Classe de botão para elementos de UI"""
     def __init__(self, x, y, width, height, text, color=None, hover_color=None):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.text = text
-        self.color = color or COLORS['button']
-        self.hover_color = hover_color or COLORS['button_hover']
-        self.is_hovered = False
-        self.is_active = False
+        self.rect = pygame.Rect(x, y, width, height)  # Button rectangle / Retângulo do botão
+        self.text = text  # Button text / Texto do botão
+        self.color = color or COLORS['button']  # Normal color / Cor normal
+        self.hover_color = hover_color or COLORS['button_hover']  # Hover color / Cor ao passar mouse
+        self.is_hovered = False  # Hover state / Estado de hover
+        self.is_active = False  # Active state / Estado ativo
         
     def draw(self, surface):
+        """Draw the button / Desenha o botão"""
         color = self.hover_color if self.is_hovered else self.color
-        border_radius = 6
+        border_radius = 6  # Rounded corners / Cantos arredondados
         
         pygame.draw.rect(surface, color, self.rect, border_radius=border_radius)
         pygame.draw.rect(surface, (0, 0, 0), self.rect, 2, border_radius=border_radius)
@@ -117,24 +111,28 @@ class Button:
         surface.blit(text_surf, text_rect)
         
     def check_hover(self, pos):
+        """Check if mouse is hovering over button / Verifica se mouse está sobre o botão"""
         self.is_hovered = self.rect.collidepoint(pos)
         return self.is_hovered
         
     def is_clicked(self, pos, event):
+        """Check if button was clicked / Verifica se botão foi clicado"""
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             return self.rect.collidepoint(pos)
         return False
 
 class Slider:
+    """Slider class for UI / Classe de slider para UI"""
     def __init__(self, x, y, width, height, min_val, max_val, initial_val):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.min = min_val
-        self.max = max_val
-        self.value = initial_val
-        self.dragging = False
-        self.handle_radius = height // 2
+        self.rect = pygame.Rect(x, y, width, height)  # Slider rectangle / Retângulo do slider
+        self.min = min_val  # Minimum value / Valor mínimo
+        self.max = max_val  # Maximum value / Valor máximo
+        self.value = initial_val  # Current value / Valor atual
+        self.dragging = False  # Dragging state / Estado de arraste
+        self.handle_radius = height // 2  # Handle radius / Raio do controle
         
     def draw(self, surface):
+        """Draw the slider / Desenha o slider"""
         pygame.draw.rect(surface, COLORS['slider'], self.rect, border_radius=self.rect.height//2)
         fill_width = int((self.value - self.min) / (self.max - self.min) * self.rect.width)
         fill_rect = pygame.Rect(self.rect.x, self.rect.y, fill_width, self.rect.height)
@@ -148,6 +146,7 @@ class Slider:
         surface.blit(value_text, (self.rect.right + 10, self.rect.centery - 10))
         
     def update(self, pos, event):
+        """Update slider value / Atualiza valor do slider"""
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(pos) or \
                math.sqrt((pos[0] - (self.rect.x + int((self.value - self.min) / (self.max - self.min) * self.rect.width))**2 + 
@@ -163,15 +162,15 @@ class Slider:
             return True
         return False
 
-# Criação dos elementos da interface
+# Create UI elements / Criação dos elementos da interface
 buttons = [
-    Button(GRID_AREA_WIDTH + 30, 40, 340, 45, "Iniciar Busca (Espaço)"),
+    Button(GRID_AREA_WIDTH + 30, 40, 340, 45, "Start Search (Space)"),
     Button(GRID_AREA_WIDTH + 30, 220, 160, 40, "Manhattan (M)", 
            (120, 180, 80), (140, 200, 100)),
-    Button(GRID_AREA_WIDTH + 210, 220, 160, 40, "Euclidiana (E)", 
+    Button(GRID_AREA_WIDTH + 210, 220, 160, 40, "Euclidean (E)", 
            (180, 120, 80), (200, 140, 100)),
-    Button(GRID_AREA_WIDTH + 30, 270, 340, 40, "Reiniciar (R)"),
-    Button(GRID_AREA_WIDTH + 30, 320, 340, 40, "Limpar Grade"),
+    Button(GRID_AREA_WIDTH + 30, 270, 340, 40, "Reset (R)"),
+    Button(GRID_AREA_WIDTH + 30, 320, 340, 40, "Clear Grid"),
 ]
 
 grid_size_buttons = [
@@ -183,6 +182,7 @@ grid_size_buttons = [
 speed_slider = Slider(GRID_AREA_WIDTH + 35, 160, 250, 20, 0.01, 0.5, 0.05)
 
 def reset_grid(rows=None, cols=None):
+    """Reset grid to initial state / Reinicia a grade para o estado inicial"""
     global GRID_CONFIG, grid, start_pos, end_pos, is_running, final_path, path_length, visited_count
     
     is_running = False
@@ -205,6 +205,7 @@ def reset_grid(rows=None, cols=None):
     visited_count = 0
 
 def calculate_heuristic(point_a, point_b, h_type):
+    """Calculate heuristic value between two points / Calcula valor heurístico entre dois pontos"""
     x1, y1 = point_a
     x2, y2 = point_b
     
@@ -213,6 +214,7 @@ def calculate_heuristic(point_a, point_b, h_type):
     return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
 def find_path(start, end, heuristic_type):
+    """Find path using A* algorithm / Encontra caminho usando algoritmo A*"""
     global is_running, final_path, g_values, path_length, visited_count
     
     open_nodes = []
@@ -275,6 +277,7 @@ def find_path(start, end, heuristic_type):
     path_length = 0
 
 def draw_grid(g_values, explored=None):
+    """Draw the grid / Desenha a grade"""
     for row in range(GRID_CONFIG['rows']):
         for col in range(GRID_CONFIG['cols']):
             rect = pygame.Rect(
@@ -302,10 +305,11 @@ def draw_grid(g_values, explored=None):
                                          row * GRID_CONFIG['cell_size'] + 5 + GRID_CONFIG['offset_y']))
 
 def draw_config_panel(path_length, visited_count):
+    """Draw configuration panel / Desenha painel de configuração"""
     config_rect = pygame.Rect(GRID_AREA_WIDTH, 0, CONFIG_AREA_WIDTH, SCREEN_HEIGHT)
     pygame.draw.rect(screen, COLORS['sidebar'], config_rect)
     
-    title = font_title.render("Configurações A*", True, COLORS['text'])
+    title = font_title.render("A* Settings", True, COLORS['text'])
     screen.blit(title, (GRID_AREA_WIDTH + 30, 10))
     
     mouse_pos = pygame.mouse.get_pos()
@@ -313,7 +317,7 @@ def draw_config_panel(path_length, visited_count):
         button.check_hover(mouse_pos)
         button.draw(screen)
     
-    grid_title = font_large.render("Tamanho da Grade:", True, COLORS['text'])
+    grid_title = font_large.render("Grid Size:", True, COLORS['text'])
     screen.blit(grid_title, (GRID_AREA_WIDTH + 30, 80))
     
     for button in grid_size_buttons:
@@ -321,11 +325,11 @@ def draw_config_panel(path_length, visited_count):
         button.check_hover(mouse_pos)
         button.draw(screen)
     
-    speed_title = font_large.render("Velocidade:", True, COLORS['text'])
+    speed_title = font_large.render("Speed:", True, COLORS['text'])
     screen.blit(speed_title, (GRID_AREA_WIDTH + 30, 135))
     speed_slider.draw(screen)
     
-    heuristic_title = font_large.render("Heurística:", True, COLORS['text'])
+    heuristic_title = font_large.render("Heuristic:", True, COLORS['text'])
     screen.blit(heuristic_title, (GRID_AREA_WIDTH + 30, 190))
     
     info_box = pygame.Rect(GRID_AREA_WIDTH + 25, 370, 350, 150)
@@ -343,12 +347,12 @@ def draw_config_panel(path_length, visited_count):
     formula_text = font_medium.render(HEURISTIC_DATA[current_heuristic]['formula'], True, (30, 80, 160))
     screen.blit(formula_text, (GRID_AREA_WIDTH + 30, 480))
     
-    stats_text = font_large.render("Estatísticas:", True, COLORS['text'])
+    stats_text = font_large.render("Statistics:", True, COLORS['text'])
     screen.blit(stats_text, (GRID_AREA_WIDTH + 30, 520))
     
     stats = [
-        f"Células visitadas: {visited_count}",
-        f"Tamanho do caminho: {path_length if path_length > 0 else 'N/A'}"
+        f"Visited cells: {visited_count}",
+        f"Path length: {path_length if path_length > 0 else 'N/A'}"
     ]
     
     for i, stat in enumerate(stats):
@@ -356,6 +360,7 @@ def draw_config_panel(path_length, visited_count):
         screen.blit(stat_line, (GRID_AREA_WIDTH + 30, 550 + i * 20))
 
 def draw_interface(g_values, explored=None, path_length=0, visited_count=0):
+    """Draw complete interface / Desenha interface completa"""
     screen.fill(COLORS['background'])
     
     draw_grid(g_values, explored)
@@ -372,6 +377,7 @@ def draw_interface(g_values, explored=None, path_length=0, visited_count=0):
     draw_config_panel(path_length, visited_count)
 
 def main():
+    """Main function / Função principal"""
     global current_heuristic, animation_speed, start_pos, end_pos
     global show_values, show_visited, dragging_start, dragging_end
     global grid, final_path, g_values, path_length, visited_count, is_running
@@ -393,19 +399,19 @@ def main():
             
             for button in buttons:
                 if button.is_clicked(mouse_pos, event):
-                    if button.text.startswith("Iniciar Busca") and not is_running:
+                    if button.text.startswith("Start Search") and not is_running:
                         find_path(start_pos, end_pos, current_heuristic)
                     elif "Manhattan" in button.text and not is_running:
                         current_heuristic = 'manhattan'
                         buttons[1].is_active = True
                         buttons[2].is_active = False
-                    elif "Euclidiana" in button.text and not is_running:
+                    elif "Euclidean" in button.text and not is_running:
                         current_heuristic = 'euclidean'
                         buttons[1].is_active = False
                         buttons[2].is_active = True
-                    elif "Reiniciar" in button.text and not is_running:
+                    elif "Reset" in button.text and not is_running:
                         reset_grid(GRID_CONFIG['rows'], GRID_CONFIG['cols'])
-                    elif "Limpar" in button.text and not is_running:
+                    elif "Clear" in button.text and not is_running:
                         grid = [[0 for _ in range(GRID_CONFIG['cols'])] for _ in range(GRID_CONFIG['rows'])]
             
             for button in grid_size_buttons:
